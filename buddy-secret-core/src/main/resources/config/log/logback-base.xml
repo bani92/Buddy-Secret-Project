@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <springProperty scope="context" name="SPRING_APP_ACTIVE" source="spring.profiles.active"/>
+    <springProperty scope="context" name="SPRING_APP_NAME" source="spring.application.name"/>
+
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} [%clr(%X{txId:-system}){magenta}] %clr(%5p) %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} : %m%n"/>
+
+    <property name="FILE_LOG_HOME" value="./logs" />
+    <property name="HOSTNAME" value="${HOSTNAME:-localhost}"/>
+
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+</included>
