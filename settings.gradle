@@ -1,0 +1,4 @@
+rootProject.name = 'buddy-secret-total'
+
+include 'buddy-secret'
+include 'buddy-secret-core'

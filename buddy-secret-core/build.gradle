@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.10'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'java-library'
+}
+
+group = 'io.bani'
+version = '0.0.1-SNAPSHOT'
+description = 'buddy-secret-core'
+
+// 핵심 설정: 이 프로젝트는 단독 실행하지 않음
+bootJar {
+    enabled = false
+}
+
+// 핵심 설정: 다른 프로젝트에서 import 할 수 있게 일반 jar 생성
+jar {
+    enabled = true
+}
+
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    api 'org.modelmapper:modelmapper:3.2.0'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
