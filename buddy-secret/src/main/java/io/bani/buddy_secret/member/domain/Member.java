@@ -107,4 +107,10 @@ public class Member {
         this.role = role;
     }
 
+    public void setJwtInfo(String email, String password, String role) {
+        this.email = email;
+        this.password = password;
+        this.role = role;
+    }
+
 }
