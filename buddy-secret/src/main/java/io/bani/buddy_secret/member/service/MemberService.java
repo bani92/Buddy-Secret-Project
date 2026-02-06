@@ -4,14 +4,19 @@ import io.bani.buddy_secret.global.util.AES256Util;
 import io.bani.buddy_secret.member.domain.Address;
 import io.bani.buddy_secret.member.domain.Member;
 import io.bani.buddy_secret.member.dto.req.MemberJoinReqDto;
+import io.bani.buddy_secret.member.dto.req.MemberLoginReqDto;
 import io.bani.buddy_secret.member.dto.res.MemberResDto;
 import io.bani.buddy_secret.member.repository.MemberRepository;
+import io.bani.buddysecretcore.exception.BusinessException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class MemberService {
@@ -56,6 +61,9 @@ public class MemberService {
         Address address = new Address(reqDto.getZipcode(), reqDto.getAddressBasic(), reqDto.getAddressDetail());
         member.updateAddress(address);
 
+        // 6. 권한 임시처리
+        member.updateRole("ROLE_ADMIN");
+
         return memberRepository.save(member).getId();
     }
 
@@ -64,5 +72,16 @@ public class MemberService {
         Member member = memberRepository.findByEmail(email)
                         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
         memberRepository.delete(member);
+    }
+
+    public String doComplexLogic(String name) throws InterruptedException {
+        log.info("비즈니스 로직 수행 중: {}", name);
+        Thread.sleep(500); // 0.5초 대기 (AOP 시간 측정용)
+        return "Hello, " + name;
+    }
+
+    public void throwError() {
+        log.error("의도적인 에러 발생!");
+        throw new RuntimeException("테스트용 예외 발생!");
     }
 }

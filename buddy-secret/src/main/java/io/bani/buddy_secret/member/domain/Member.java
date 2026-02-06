@@ -100,4 +100,11 @@ public class Member {
         }
         this.phoneNumber = encryptPhone;
     }
+
+    public void updateRole(String role) {
+
+        if (role == null) return;
+        this.role = role;
+    }
+
 }
