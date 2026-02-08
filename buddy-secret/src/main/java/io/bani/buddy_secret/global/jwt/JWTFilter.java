@@ -50,6 +50,12 @@ public class JWTFilter extends OncePerRequestFilter {
         try {
             String isLogout = redisTemplate.opsForValue().get(token);
 
+            String category = jwtUtil.getCategory(token);
+            if (!"access".equals(category)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Invalid access token");
+            }
+
             // Redis 블랙리스트 체크
             if (isLogout != null) {
                 log.warn("이미 로그아웃된 토큰입니다.");

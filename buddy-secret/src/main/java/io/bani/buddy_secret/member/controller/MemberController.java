@@ -6,7 +6,9 @@ import io.bani.buddy_secret.member.dto.res.MemberResDto;
 import io.bani.buddy_secret.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,7 +81,7 @@ public class MemberController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request) {
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
         String authorization = request.getHeader("Authorization");
 
         if (authorization == null || !authorization.startsWith("Bearer ")) {
@@ -88,12 +90,24 @@ public class MemberController {
 
         String token = authorization.split(" ")[1];
 
-        Long expiration = jwtUtil.getExpiration(token);
-        long now = new Date().getTime();
-        long remainMs = expiration - now;
+        try {
+            Long expiration = jwtUtil.getExpiration(token);
+            long now = new Date().getTime();
+            long remainMs = expiration - now;
 
-        redisTemplate.opsForValue()
-                .set(token, "logout", remainMs, TimeUnit.MILLISECONDS);
+            redisTemplate.opsForValue()
+                    .set(token, "logout", remainMs, TimeUnit.MILLISECONDS);
+
+            String username = jwtUtil.getUsername(token);
+            redisTemplate.delete("refresh:" + username);
+        } catch (Exception e) {
+            log.error("로그아웃 과정에서 토큰 해석 실패: {}", e.getMessage());
+        }
+
+        Cookie cookie = new Cookie("refresh", null);
+        cookie.setMaxAge(0);
+        cookie.setPath("/");
+        response.addCookie(cookie);
 
         return ResponseEntity.ok("로그아웃 성공");
     }
