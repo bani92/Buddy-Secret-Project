@@ -39,4 +39,9 @@ public class JWTUtil {
                 .signWith(secretKey)
                 .compact();
     }
+
+    public Long getExpiration(String token) {
+        return Jwts.parser().verifyWith(secretKey).build()
+                .parseSignedClaims(token).getPayload().getExpiration().getTime();
+    }
 }

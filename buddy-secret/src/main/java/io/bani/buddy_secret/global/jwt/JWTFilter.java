@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,9 +19,11 @@ import java.io.IOException;
 public class JWTFilter extends OncePerRequestFilter {
 
     private final JWTUtil jwtUtil;
+    private final RedisTemplate<String, String> redisTemplate;
 
-    public JWTFilter(JWTUtil jwtUtil) {
+    public JWTFilter(JWTUtil jwtUtil, RedisTemplate<String, String> redisTemplate) {
         this.jwtUtil = jwtUtil;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
@@ -44,25 +47,48 @@ public class JWTFilter extends OncePerRequestFilter {
 
         String token = authorization.split(" ")[1];
 
-        if (jwtUtil.isExpired(token)) {
-            log.warn("Token expired");
-            filterChain.doFilter(request, response);
-            return; // 메서드 종료 (필수)
+        try {
+            String isLogout = redisTemplate.opsForValue().get(token);
+
+            // Redis 블랙리스트 체크
+            if (isLogout != null) {
+                log.warn("이미 로그아웃된 토큰입니다.");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Logout Token");
+                return;
+            }
+
+            // 만료 체크
+            if (jwtUtil.isExpired(token)) {
+                log.warn("Token expired");
+                filterChain.doFilter(request, response);
+                return; // 메서드 종료 (필수)
+            }
+
+            String username = jwtUtil.getUsername(token);
+            String role = jwtUtil.getRole(token);
+
+            // 인증 객체 생성 및 세션 등록
+            Member member = new Member();
+            member.setJwtInfo(username, "tempPassword",role);
+
+            // UserDeatils에 회원 정보 객체 담기
+            CustomUserDetails customUserDetails = new CustomUserDetails(member);
+
+            // 스프링 시큐리티 인증 토큰 생성
+            Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
+            // 세션에 사용자 등록
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.warn("JWT 토큰이 만료되었습니다: {}", e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("AccessToken expired");
+            return;
+        } catch (ServletException e) {
+            log.error("JWT 검증 중 오류 발생: {}", e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
-
-        String username = jwtUtil.getUsername(token);
-        String role = jwtUtil.getRole(token);
-
-        Member member = new Member();
-        member.setJwtInfo(username, "tempPassword",role);
-
-        // UserDeatils에 회원 정보 객체 담기
-        CustomUserDetails customUserDetails = new CustomUserDetails(member);
-
-        // 스프링 시큐리티 인증 토큰 생성
-        Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
-        // 세션에 사용자 등록
-        SecurityContextHolder.getContext().setAuthentication(authToken);
 
         filterChain.doFilter(request, response);
     }

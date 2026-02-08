@@ -1,18 +1,23 @@
 package io.bani.buddy_secret.member.controller;
 
+import io.bani.buddy_secret.global.jwt.JWTUtil;
 import io.bani.buddy_secret.member.dto.req.MemberJoinReqDto;
-import io.bani.buddy_secret.member.dto.req.MemberLoginReqDto;
 import io.bani.buddy_secret.member.dto.res.MemberResDto;
 import io.bani.buddy_secret.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Tag(name = "Member", description = "회원 관련 API")
@@ -23,6 +28,8 @@ public class MemberController {
 
     private final MemberService memberService;
     private final ModelMapper modelMapper;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final JWTUtil jwtUtil;
 
     @GetMapping("/")
     public String mainP() {
@@ -69,5 +76,25 @@ public class MemberController {
     public ResponseEntity<Void> withdraw(@PathVariable String email) {
         memberService.withdrawMember(email);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        String authorization = request.getHeader("Authorization");
+
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+
+        String token = authorization.split(" ")[1];
+
+        Long expiration = jwtUtil.getExpiration(token);
+        long now = new Date().getTime();
+        long remainMs = expiration - now;
+
+        redisTemplate.opsForValue()
+                .set(token, "logout", remainMs, TimeUnit.MILLISECONDS);
+
+        return ResponseEntity.ok("로그아웃 성공");
     }
 }
